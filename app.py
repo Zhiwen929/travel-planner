@@ -2,7 +2,6 @@ from flask import Flask, request, jsonify
 import requests
 from datetime import datetime, timedelta
 import os
-from openai import OpenAI
 
 app = Flask(__name__)
 
@@ -111,18 +110,18 @@ def select_best_routes(routes):
     }
 
 def generate_suggestions(origin, destination, routes):
-    """使用 GPT-4 生成旅遊建議（生成式AI）"""
+    """使用 GPT-4 生成旅遊建議（生成式AI）- 使用直接HTTP請求"""
     try:
-        # 從環境變數讀取 API Key
         api_key = os.environ.get('OPENAI_API_KEY')
         if not api_key:
             return "請設定 OPENAI_API_KEY 環境變數"
         
-        # 使用更簡單的初始化方式
-        client = OpenAI(
-            api_key=api_key,
-            base_url="https://api.openai.com/v1"
-        )
+        url = "https://api.openai.com/v1/chat/completions"
+        
+        headers = {
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}"
+        }
         
         prompt = f"""用戶要從{origin}前往{destination}。
 推薦方案：{routes['recommended']['type']}，時長{routes['recommended']['total_duration']}分鐘，費用{routes['recommended']['total_cost']}元。
@@ -132,15 +131,21 @@ def generate_suggestions(origin, destination, routes):
 2. 轉乘注意事項
 3. 景點美食推薦"""
         
-        response = client.chat.completions.create(
-            model="gpt-4o-mini",
-            messages=[{"role": "user", "content": prompt}],
-            max_tokens=200,
-            temperature=0.7
-        )
+        data = {
+            "model": "gpt-4o-mini",
+            "messages": [{"role": "user", "content": prompt}],
+            "max_tokens": 200,
+            "temperature": 0.7
+        }
         
-        return response.choices[0].message.content
+        response = requests.post(url, headers=headers, json=data, timeout=30)
         
+        if response.status_code == 200:
+            result = response.json()
+            return result['choices'][0]['message']['content']
+        else:
+            return f"GPT API錯誤: {response.status_code} - {response.text}"
+            
     except Exception as e:
         return f"GPT建議暫時無法使用: {str(e)}"
 
@@ -150,4 +155,5 @@ def test():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 

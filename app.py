@@ -118,23 +118,29 @@ def generate_suggestions(origin, destination, routes):
         if not api_key:
             return "請設定 OPENAI_API_KEY 環境變數"
         
-        client = OpenAI(api_key=api_key)
+        # 使用更簡單的初始化方式
+        client = OpenAI(
+            api_key=api_key,
+            base_url="https://api.openai.com/v1"
+        )
         
         prompt = f"""用戶要從{origin}前往{destination}。
 推薦方案：{routes['recommended']['type']}，時長{routes['recommended']['total_duration']}分鐘，費用{routes['recommended']['total_cost']}元。
 
-請用繁體中文生成簡潔建議（150字內）：
-1. 天氣穿搭建議
-2. 轉乘注意事項（如果有轉乘）
-3. 目的地景點美食推薦"""
+請用繁體中文生成簡潔建議（100字內）：
+1. 穿搭建議
+2. 轉乘注意事項
+3. 景點美食推薦"""
         
         response = client.chat.completions.create(
             model="gpt-4o-mini",
             messages=[{"role": "user", "content": prompt}],
-            max_tokens=300
+            max_tokens=200,
+            temperature=0.7
         )
         
         return response.choices[0].message.content
+        
     except Exception as e:
         return f"GPT建議暫時無法使用: {str(e)}"
 
@@ -144,3 +150,4 @@ def test():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

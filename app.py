@@ -447,43 +447,42 @@ def generate_gpt_suggestion(schedule_id):
         if not api_key:
             return "請設定 OPENAI_API_KEY"
         
-        # 詳細的班次資訊，包含轉乘時間
         schedules_info = {
             1: {
                 "route": "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
-                "transfer_time": 36,  # 分鐘
+                "transfer_time": 36,
                 "has_transfer": True,
-                "arrival_time": "11:05"
+                "transfer_type": "medium"  # 中等時間
             },
             2: {
                 "route": "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
                 "transfer_time": 18,
                 "has_transfer": True,
-                "arrival_time": "11:51"
+                "transfer_type": "tight"  # 緊湊
             },
             3: {
                 "route": "台鐵自強號07:24直達，12:44抵達花蓮",
                 "transfer_time": 0,
                 "has_transfer": False,
-                "arrival_time": "12:44"
+                "transfer_type": "none"
             },
             4: {
                 "route": "台鐵自強3000號07:49直達，12:11抵達花蓮",
                 "transfer_time": 0,
                 "has_transfer": False,
-                "arrival_time": "12:11"
+                "transfer_type": "none"
             },
             5: {
                 "route": "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
                 "transfer_time": 57,
                 "has_transfer": True,
-                "arrival_time": "11:46"
+                "transfer_type": "long"  # 充裕
             },
             6: {
                 "route": "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮",
                 "transfer_time": 66,
                 "has_transfer": True,
-                "arrival_time": "12:11"
+                "transfer_type": "long"  # 充裕
             }
         }
         
@@ -497,34 +496,58 @@ def generate_gpt_suggestion(schedule_id):
             "Authorization": f"Bearer {api_key}"
         }
         
-        # 根據是否需要轉乘，調整提示詞
         if info["has_transfer"]:
-            prompt = f"""用戶選擇了以下班次從台中前往花蓮：{info['route']}
+            # 根據轉乘時間長短調整建議
+            if info["transfer_type"] == "long":  # 57-66分鐘
+                transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間相當充裕！建議：
+- 抵達台北車站後，可以先前往一樓的台北車站美食街或地下街，有許多台北知名小吃如阜杭豆漿、東門餃子館等
+- 預留30-40分鐘享用早餐或逛逛微風台北車站
+- 在發車前15-20分鐘前往台鐵月台即可
+- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘，請注意指標"""
+            elif info["transfer_type"] == "medium":  # 36分鐘
+                transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間適中。建議：
+- 抵達台北車站後，可以快速到一樓便利商店或美食街買份早餐
+- 建議預留10-15分鐘購買早餐
+- 在發車前15分鐘前往台鐵月台
+- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘"""
+            else:  # 18分鐘，緊湊
+                transfer_advice = f"""你只有{info['transfer_time']}分鐘的轉乘時間，時間較為緊湊！建議：
+- 下高鐵後請直接前往台鐵月台，不要停留
+- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘
+- 建議提早在高鐵上或出發前用餐
+- 跟隨「台鐵」指標快速移動，發車前5分鐘務必抵達月台"""
+            
+            prompt = f"""用戶選擇了從台中到花蓮的班次：{info['route']}
 出發日期：2026年1月13日（冬季）
-轉乘時間：{info['transfer_time']}分鐘
 
-請用繁體中文提供簡潔實用的建議（120字內），分三點：
-1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，提醒攜帶防風外套和保暖衣物
-2. 轉乘注意事項：根據{info['transfer_time']}分鐘的轉乘時間，建議提早多久到達月台比較保險（考慮台北車站動線）
-3. 早班車提醒：早上7點多出發，提醒是否來得及吃早餐、高鐵/台鐵上的餐飲服務
+請用繁體中文提供簡潔實用的建議（180字內），包含以下內容：
 
-請直接給建議，不要有標題或編號。語氣親切實用。"""
+1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，建議攜帶防風外套和保暖衣物。
+
+2. 轉乘時間運用：{transfer_advice}
+
+3. 早班車提醒：早上出發記得吃早餐，高鐵和台鐵都有提供便當和飲料販售。
+
+請用親切、實用的語氣，直接給建議，不要加標題或編號。"""
         else:
-            prompt = f"""用戶選擇了以下班次從台中前往花蓮：{info['route']}
+            prompt = f"""用戶選擇了從台中到花蓮的班次：{info['route']}
 出發日期：2026年1月13日（冬季）
 直達車，無需轉乘
 
-請用繁體中文提供簡潔實用的建議（100字內），分三點：
-1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，提醒攜帶防風外套和保暖衣物
-2. 直達優勢：無需轉乘，可在車上休息或欣賞沿途風景，建議靠窗座位
-3. 早班車提醒：早上7點多出發，提醒是否來得及吃早餐、台鐵上的餐飲服務
+請用繁體中文提供簡潔實用的建議（120字內），包含：
 
-請直接給建議，不要有標題或編號。語氣親切實用。"""
+1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，建議攜帶防風外套和保暖衣物。
+
+2. 直達優勢：無需轉乘，可以在車上安心休息或欣賞沿途風景，建議選擇靠窗座位。車程約{info['transfer_time'] if info['transfer_time'] > 0 else '4-5'}小時。
+
+3. 早班車提醒：早上出發記得吃早餐，台鐵車上有提供便當和飲料販售。
+
+請用親切、實用的語氣，直接給建議，不要加標題或編號。"""
         
         request_data = {
             "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 250,
+            "max_tokens": 350,
             "temperature": 0.7
         }
         
@@ -540,5 +563,6 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 
 

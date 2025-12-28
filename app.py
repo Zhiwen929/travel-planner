@@ -5,26 +5,6 @@ import os
 
 app = Flask(__name__)
 
-# 班次資料庫
-SCHEDULES = {
-    "hsr_taichung_taipei": [
-        {"train_no": "1202", "depart": "07:21", "arrive": "08:04", "duration": 43},
-        {"train_no": "0802", "depart": "07:25", "arrive": "08:29", "duration": 64},
-        {"train_no": "0204", "depart": "07:48", "arrive": "08:34", "duration": 46},
-        {"train_no": "1602", "depart": "07:40", "arrive": "08:39", "duration": 59}
-    ],
-    "tra_taipei_hualien": [
-        {"train_no": "3000-472", "type": "自強3000", "depart": "08:40", "arrive": "11:05", "duration": 145},
-        {"train_no": "212", "type": "自強", "depart": "08:52", "arrive": "11:51", "duration": 179},
-        {"train_no": "3000-418", "type": "自強3000", "depart": "09:26", "arrive": "11:46", "duration": 140},
-        {"train_no": "3000-280", "type": "自強3000", "depart": "09:45", "arrive": "12:11", "duration": 146}
-    ],
-    "tra_taichung_hualien": [
-        {"train_no": "170", "type": "自強", "depart": "07:24", "arrive": "12:44", "duration": 320},
-        {"train_no": "3000-280", "type": "自強3000", "depart": "07:49", "arrive": "12:11", "duration": 262}
-    ]
-}
-
 HTML_TEMPLATE = """
 <!DOCTYPE html>
 <html lang="zh-TW">
@@ -140,8 +120,6 @@ HTML_TEMPLATE = """
             box-shadow: 0 2px 8px rgba(102,126,234,0.2);
         }
         .schedule-detail {
-            display: flex;
-            justify-content: space-between;
             margin: 5px 0;
             font-size: 14px;
         }
@@ -201,19 +179,12 @@ HTML_TEMPLATE = """
     </div>
     
     <script>
-        // 設定預設時間為今天 07:00
         const now = new Date();
         now.setHours(7, 0, 0, 0);
         const dateStr = now.toISOString().slice(0, 16);
         document.getElementById('departure_time').value = dateStr;
         
-        let currentData = null;
-        
         document.getElementById('planBtn').addEventListener('click', async function() {
-            const origin = document.getElementById('origin').value;
-            const destination = document.getElementById('destination').value;
-            const departure_time = document.getElementById('departure_time').value;
-            
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
             const gptSection = document.getElementById('gptSection');
@@ -222,57 +193,43 @@ HTML_TEMPLATE = """
             result.innerHTML = '';
             gptSection.style.display = 'none';
             
-            try {
-                const response = await fetch('/api/plan_route', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ origin, destination, departure_time })
-                });
-                
-                const data = await response.json();
-                currentData = data;
-                
-                if (data.status === 'success') {
-                    displayRoutes(data.routes);
-                }
-            } catch (error) {
-                result.innerHTML = '<p style="color: red;">發生錯誤：' + error + '</p>';
-            } finally {
+            setTimeout(() => {
+                displayRoutes();
                 loading.style.display = 'none';
-            }
+            }, 500);
         });
         
-        function displayRoutes(routes) {
+        function displayRoutes() {
             const result = document.getElementById('result');
             
-            result.innerHTML = `
-                <div class="route-card" onclick="toggleSchedule('fastest')">
-                    <h3>⚡ 時間最短方案</h3>
-                    <div class="route-summary"><strong>類型：</strong>高鐵+台鐵</div>
-                    <div class="route-summary"><strong>預估時長：</strong>約 3.5-4 小時</div>
-                    <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
-                    <div class="route-summary" style="color: #666; font-size: 14px;">高鐵可購買早鳥票或大學生票更優惠</div>
-                    <div id="fastest-schedule" class="schedule-list"></div>
-                </div>
+            const html = '<div class="route-card" onclick="toggleSchedule(\'fastest\')">' +
+                '<h3>⚡ 時間最短方案</h3>' +
+                '<div class="route-summary"><strong>類型：</strong>高鐵+台鐵</div>' +
+                '<div class="route-summary"><strong>預估時長：</strong>約 3.5-4 小時</div>' +
+                '<div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>' +
+                '<div class="route-summary" style="color: #666; font-size: 14px;">高鐵可購買早鳥票或大學生票更優惠</div>' +
+                '<div id="fastest-schedule" class="schedule-list"></div>' +
+                '</div>' +
                 
-                <div class="route-card" onclick="toggleSchedule('cheapest')">
-                    <h3>💰 費用最低方案</h3>
-                    <div class="route-summary"><strong>類型：</strong>台鐵直達</div>
-                    <div class="route-summary"><strong>預估時長：</strong>4-5 小時</div>
-                    <div class="route-summary"><strong>預估費用：</strong>NT$ 966</div>
-                    <div class="route-summary" style="color: #666; font-size: 14px;">台鐵無優惠票價，一律以全票計算</div>
-                    <div id="cheapest-schedule" class="schedule-list"></div>
-                </div>
+                '<div class="route-card" onclick="toggleSchedule(\'cheapest\')">' +
+                '<h3>💰 費用最低方案</h3>' +
+                '<div class="route-summary"><strong>類型：</strong>台鐵直達</div>' +
+                '<div class="route-summary"><strong>預估時長：</strong>4-5 小時</div>' +
+                '<div class="route-summary"><strong>預估費用：</strong>NT$ 966</div>' +
+                '<div class="route-summary" style="color: #666; font-size: 14px;">台鐵無優惠票價，一律以全票計算</div>' +
+                '<div id="cheapest-schedule" class="schedule-list"></div>' +
+                '</div>' +
                 
-                <div class="route-card" onclick="toggleSchedule('recommended')">
-                    <h3>⭐ 推薦方案（折衷）</h3>
-                    <div class="route-summary"><strong>類型：</strong>高鐵+台鐵（轉乘時間充裕）</div>
-                    <div class="route-summary"><strong>預估時長：</strong>約 4 小時</div>
-                    <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
-                    <div class="route-summary" style="color: #666; font-size: 14px;">轉乘時間較充裕，不易錯過班次</div>
-                    <div id="recommended-schedule" class="schedule-list"></div>
-                </div>
-            `;
+                '<div class="route-card" onclick="toggleSchedule(\'recommended\')">' +
+                '<h3>⭐ 推薦方案（折衷）</h3>' +
+                '<div class="route-summary"><strong>類型：</strong>高鐵+台鐵（轉乘時間充裕）</div>' +
+                '<div class="route-summary"><strong>預估時長：</strong>約 4 小時</div>' +
+                '<div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>' +
+                '<div class="route-summary" style="color: #666; font-size: 14px;">轉乘時間較充裕，不易錯過班次</div>' +
+                '<div id="recommended-schedule" class="schedule-list"></div>' +
+                '</div>';
+            
+            result.innerHTML = html;
         }
         
         async function toggleSchedule(type) {
@@ -283,21 +240,21 @@ HTML_TEMPLATE = """
                 return;
             }
             
-            // 關閉其他展開的
             document.querySelectorAll('.schedule-list').forEach(el => el.style.display = 'none');
             
-            // 載入班次
             const response = await fetch('/api/get_schedules?type=' + type);
             const data = await response.json();
             
-            scheduleDiv.innerHTML = data.schedules.map(s => 
-                '<div class="schedule-item" onclick="selectSchedule(\'' + type + '\', ' + s.id + ')">' +
-                '<div class="schedule-detail"><strong>' + s.title + '</strong></div>' +
-                '<div class="schedule-detail">' + s.detail + '</div>' +
-                '<div class="schedule-detail"><span>時長：' + s.duration + '</span><span>費用：NT$ ' + s.cost + '</span></div>' +
-                '</div>'
-            ).join('');
+            let html = '';
+            data.schedules.forEach(s => {
+                html += '<div class="schedule-item" onclick="selectSchedule(\'' + type + '\', ' + s.id + ')">' +
+                    '<div class="schedule-detail"><strong>' + s.title + '</strong></div>' +
+                    '<div class="schedule-detail">' + s.detail + '</div>' +
+                    '<div class="schedule-detail">時長：' + s.duration + ' | 費用：NT$ ' + s.cost + '</div>' +
+                    '</div>';
+            });
             
+            scheduleDiv.innerHTML = html;
             scheduleDiv.style.display = 'block';
         }
         
@@ -305,18 +262,20 @@ HTML_TEMPLATE = """
             const response = await fetch('/api/get_suggestion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ type, schedule_id: scheduleId })
+                body: JSON.stringify({ type: type, schedule_id: scheduleId })
             });
             
             const data = await response.json();
             
             const gptSection = document.getElementById('gptSection');
-            gptSection.innerHTML = `
-                <h3>🤖 AI 旅遊建議</h3>
-                <p>${data.suggestion.replace(/\\n/g, '<br>')}</p>
-                <a href="${data.booking_link}" target="_blank" class="book-link">前往訂票</a>
-            `;
+            const suggestionText = data.suggestion.split('\\n').join('<br>');
+            
+            gptSection.innerHTML = '<h3>🤖 AI 旅遊建議</h3>' +
+                '<p>' + suggestionText + '</p>' +
+                '<a href="' + data.booking_link + '" target="_blank" class="book-link">前往訂票</a>';
+            
             gptSection.style.display = 'block';
+            gptSection.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
@@ -327,20 +286,11 @@ HTML_TEMPLATE = """
 def home():
     return render_template_string(HTML_TEMPLATE)
 
-@app.route('/api/plan_route', methods=['POST'])
-def plan_route():
-    data = request.get_json()
-    return jsonify({
-        "status": "success",
-        "routes": {}
-    })
-
 @app.route('/api/get_schedules', methods=['GET'])
 def get_schedules():
     route_type = request.args.get('type')
     
     if route_type == 'fastest':
-        # 最快方案：最佳高鐵+台鐵組合
         schedules = [
             {
                 "id": 1,
@@ -358,7 +308,6 @@ def get_schedules():
             }
         ]
     elif route_type == 'cheapest':
-        # 最省方案：台鐵直達
         schedules = [
             {
                 "id": 3,
@@ -375,8 +324,7 @@ def get_schedules():
                 "cost": "966"
             }
         ]
-    else:  # recommended
-        # 推薦方案：轉乘時間較充裕
+    else:
         schedules = [
             {
                 "id": 5,
@@ -401,14 +349,12 @@ def get_suggestion():
     data = request.get_json()
     schedule_id = data.get('schedule_id')
     
-    # 根據班次生成GPT建議
     suggestion = generate_gpt_suggestion(schedule_id)
     
-    # 售票連結
     if schedule_id in [1, 2, 5, 6]:
-        booking_link = "https://www.thsrc.com.tw/"  # 高鐵
+        booking_link = "https://www.thsrc.com.tw/"
     else:
-        booking_link = "https://www.railway.gov.tw/"  # 台鐵
+        booking_link = "https://www.railway.gov.tw/"
     
     return jsonify({
         "suggestion": suggestion,
@@ -459,7 +405,7 @@ def generate_gpt_suggestion(schedule_id):
             return "GPT建議暫時無法使用"
             
     except Exception as e:
-        return f"AI建議載入中..."
+        return "AI建議載入中..."
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

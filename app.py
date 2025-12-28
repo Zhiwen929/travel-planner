@@ -127,7 +127,7 @@ HTML_TEMPLATE = """
             background: #fff3cd;
             border-radius: 12px;
             padding: 20px;
-            margin-top: 20px;
+            margin-top: 15px;
             border-left: 5px solid #ffc107;
             display: none;
         }
@@ -154,14 +154,56 @@ HTML_TEMPLATE = """
         <div class="input-group">
             <label>出發地點</label>
             <select id="origin">
+                <option value="基隆市">基隆市</option>
+                <option value="台北市">台北市</option>
+                <option value="新北市">新北市</option>
+                <option value="桃園市">桃園市</option>
+                <option value="新竹市">新竹市</option>
+                <option value="新竹縣">新竹縣</option>
+                <option value="苗栗縣">苗栗縣</option>
                 <option value="台中市" selected>台中市</option>
+                <option value="彰化縣">彰化縣</option>
+                <option value="南投縣">南投縣</option>
+                <option value="雲林縣">雲林縣</option>
+                <option value="嘉義市">嘉義市</option>
+                <option value="嘉義縣">嘉義縣</option>
+                <option value="台南市">台南市</option>
+                <option value="高雄市">高雄市</option>
+                <option value="屏東縣">屏東縣</option>
+                <option value="宜蘭縣">宜蘭縣</option>
+                <option value="花蓮縣">花蓮縣</option>
+                <option value="台東縣">台東縣</option>
+                <option value="澎湖縣">澎湖縣</option>
+                <option value="金門縣">金門縣</option>
+                <option value="連江縣">連江縣</option>
             </select>
         </div>
         
         <div class="input-group">
             <label>目的地</label>
             <select id="destination">
+                <option value="基隆市">基隆市</option>
+                <option value="台北市">台北市</option>
+                <option value="新北市">新北市</option>
+                <option value="桃園市">桃園市</option>
+                <option value="新竹市">新竹市</option>
+                <option value="新竹縣">新竹縣</option>
+                <option value="苗栗縣">苗栗縣</option>
+                <option value="台中市">台中市</option>
+                <option value="彰化縣">彰化縣</option>
+                <option value="南投縣">南投縣</option>
+                <option value="雲林縣">雲林縣</option>
+                <option value="嘉義市">嘉義市</option>
+                <option value="嘉義縣">嘉義縣</option>
+                <option value="台南市">台南市</option>
+                <option value="高雄市">高雄市</option>
+                <option value="屏東縣">屏東縣</option>
+                <option value="宜蘭縣">宜蘭縣</option>
                 <option value="花蓮縣" selected>花蓮縣</option>
+                <option value="台東縣">台東縣</option>
+                <option value="澎湖縣">澎湖縣</option>
+                <option value="金門縣">金門縣</option>
+                <option value="連江縣">連江縣</option>
             </select>
         </div>
         
@@ -175,7 +217,6 @@ HTML_TEMPLATE = """
         <div class="loading" id="loading">正在規劃最佳路線...</div>
         
         <div id="result"></div>
-        <div class="gpt-section" id="gptSection"></div>
     </div>
     
     <script>
@@ -186,11 +227,9 @@ HTML_TEMPLATE = """
         document.getElementById('planBtn').addEventListener('click', function() {
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
-            const gptSection = document.getElementById('gptSection');
             
             loading.style.display = 'block';
             result.innerHTML = '';
-            gptSection.style.display = 'none';
             
             setTimeout(function() {
                 displayRoutes();
@@ -208,6 +247,7 @@ HTML_TEMPLATE = """
                     <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
                     <div class="route-summary" style="color: #666; font-size: 14px;">高鐵可購買早鳥票或大學生票更優惠</div>
                     <div class="schedule-list"></div>
+                    <div class="gpt-section"></div>
                 </div>
                 
                 <div class="route-card" data-type="cheapest">
@@ -217,6 +257,7 @@ HTML_TEMPLATE = """
                     <div class="route-summary"><strong>預估費用：</strong>NT$ 966</div>
                     <div class="route-summary" style="color: #666; font-size: 14px;">台鐵無優惠票價，一律以全票計算</div>
                     <div class="schedule-list"></div>
+                    <div class="gpt-section"></div>
                 </div>
                 
                 <div class="route-card" data-type="recommended">
@@ -226,6 +267,7 @@ HTML_TEMPLATE = """
                     <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
                     <div class="route-summary" style="color: #666; font-size: 14px;">轉乘時間較充裕，不易錯過班次</div>
                     <div class="schedule-list"></div>
+                    <div class="gpt-section"></div>
                 </div>
             `;
             
@@ -249,6 +291,10 @@ HTML_TEMPLATE = """
                 el.style.display = 'none';
             });
             
+            document.querySelectorAll('.gpt-section').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            
             const response = await fetch('/api/get_schedules?type=' + type);
             const data = await response.json();
             
@@ -267,29 +313,34 @@ HTML_TEMPLATE = """
             scheduleDiv.querySelectorAll('.schedule-item').forEach(function(item) {
                 item.addEventListener('click', function(e) {
                     e.stopPropagation();
-                    selectSchedule(type, parseInt(this.getAttribute('data-schedule')));
+                    const scheduleId = parseInt(this.getAttribute('data-schedule'));
+                    selectSchedule(type, scheduleId);
                 });
             });
         }
         
         async function selectSchedule(type, scheduleId) {
+            const card = document.querySelector('[data-type="' + type + '"]');
+            const gptSection = card.querySelector('.gpt-section');
+            
+            document.querySelectorAll('.gpt-section').forEach(function(el) {
+                el.style.display = 'none';
+            });
+            
             const response = await fetch('/api/get_suggestion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: type, schedule_id: scheduleId })
             });
-    
+            
             const data = await response.json();
-            const gptSection = document.getElementById('gptSection');
-    
             const suggestionText = data.suggestion.split('\\n').join('<br>');
-    
-            gptSection.innerHTML = '<h3>🤖 AI 旅遊建議</h3>' +
+            
+            gptSection.innerHTML = '<h3>🤖 助手建議</h3>' +
                 '<p>' + suggestionText + '</p>' +
                 '<a href="' + data.booking_link + '" target="_blank" class="book-link">前往訂票</a>';
-    
+            
             gptSection.style.display = 'block';
-            gptSection.scrollIntoView({ behavior: 'smooth' });
         }
     </script>
 </body>
@@ -423,4 +474,3 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-

@@ -181,10 +181,9 @@ HTML_TEMPLATE = """
     <script>
         const now = new Date();
         now.setHours(7, 0, 0, 0);
-        const dateStr = now.toISOString().slice(0, 16);
-        document.getElementById('departure_time').value = dateStr;
+        document.getElementById('departure_time').value = now.toISOString().slice(0, 16);
         
-        document.getElementById('planBtn').addEventListener('click', async function() {
+        document.getElementById('planBtn').addEventListener('click', function() {
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
             const gptSection = document.getElementById('gptSection');
@@ -193,7 +192,7 @@ HTML_TEMPLATE = """
             result.innerHTML = '';
             gptSection.style.display = 'none';
             
-            setTimeout(() => {
+            setTimeout(function() {
                 displayRoutes();
                 loading.style.display = 'none';
             }, 500);
@@ -201,53 +200,61 @@ HTML_TEMPLATE = """
         
         function displayRoutes() {
             const result = document.getElementById('result');
-            
-            const html = '<div class="route-card" onclick="toggleSchedule(\'fastest\')">' +
-                '<h3>⚡ 時間最短方案</h3>' +
-                '<div class="route-summary"><strong>類型：</strong>高鐵+台鐵</div>' +
-                '<div class="route-summary"><strong>預估時長：</strong>約 3.5-4 小時</div>' +
-                '<div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>' +
-                '<div class="route-summary" style="color: #666; font-size: 14px;">高鐵可購買早鳥票或大學生票更優惠</div>' +
-                '<div id="fastest-schedule" class="schedule-list"></div>' +
-                '</div>' +
+            result.innerHTML = `
+                <div class="route-card" data-type="fastest">
+                    <h3>⚡ 時間最短方案</h3>
+                    <div class="route-summary"><strong>類型：</strong>高鐵+台鐵</div>
+                    <div class="route-summary"><strong>預估時長：</strong>約 3.5-4 小時</div>
+                    <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
+                    <div class="route-summary" style="color: #666; font-size: 14px;">高鐵可購買早鳥票或大學生票更優惠</div>
+                    <div class="schedule-list"></div>
+                </div>
                 
-                '<div class="route-card" onclick="toggleSchedule(\'cheapest\')">' +
-                '<h3>💰 費用最低方案</h3>' +
-                '<div class="route-summary"><strong>類型：</strong>台鐵直達</div>' +
-                '<div class="route-summary"><strong>預估時長：</strong>4-5 小時</div>' +
-                '<div class="route-summary"><strong>預估費用：</strong>NT$ 966</div>' +
-                '<div class="route-summary" style="color: #666; font-size: 14px;">台鐵無優惠票價，一律以全票計算</div>' +
-                '<div id="cheapest-schedule" class="schedule-list"></div>' +
-                '</div>' +
+                <div class="route-card" data-type="cheapest">
+                    <h3>💰 費用最低方案</h3>
+                    <div class="route-summary"><strong>類型：</strong>台鐵直達</div>
+                    <div class="route-summary"><strong>預估時長：</strong>4-5 小時</div>
+                    <div class="route-summary"><strong>預估費用：</strong>NT$ 966</div>
+                    <div class="route-summary" style="color: #666; font-size: 14px;">台鐵無優惠票價，一律以全票計算</div>
+                    <div class="schedule-list"></div>
+                </div>
                 
-                '<div class="route-card" onclick="toggleSchedule(\'recommended\')">' +
-                '<h3>⭐ 推薦方案（折衷）</h3>' +
-                '<div class="route-summary"><strong>類型：</strong>高鐵+台鐵（轉乘時間充裕）</div>' +
-                '<div class="route-summary"><strong>預估時長：</strong>約 4 小時</div>' +
-                '<div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>' +
-                '<div class="route-summary" style="color: #666; font-size: 14px;">轉乘時間較充裕，不易錯過班次</div>' +
-                '<div id="recommended-schedule" class="schedule-list"></div>' +
-                '</div>';
+                <div class="route-card" data-type="recommended">
+                    <h3>⭐ 推薦方案（折衷）</h3>
+                    <div class="route-summary"><strong>類型：</strong>高鐵+台鐵（轉乘時間充裕）</div>
+                    <div class="route-summary"><strong>預估時長：</strong>約 4 小時</div>
+                    <div class="route-summary"><strong>預估費用：</strong>NT$ 1,283</div>
+                    <div class="route-summary" style="color: #666; font-size: 14px;">轉乘時間較充裕，不易錯過班次</div>
+                    <div class="schedule-list"></div>
+                </div>
+            `;
             
-            result.innerHTML = html;
+            document.querySelectorAll('.route-card').forEach(function(card) {
+                card.addEventListener('click', function() {
+                    toggleSchedule(this.getAttribute('data-type'));
+                });
+            });
         }
         
         async function toggleSchedule(type) {
-            const scheduleDiv = document.getElementById(type + '-schedule');
+            const card = document.querySelector('[data-type="' + type + '"]');
+            const scheduleDiv = card.querySelector('.schedule-list');
             
             if (scheduleDiv.style.display === 'block') {
                 scheduleDiv.style.display = 'none';
                 return;
             }
             
-            document.querySelectorAll('.schedule-list').forEach(el => el.style.display = 'none');
+            document.querySelectorAll('.schedule-list').forEach(function(el) {
+                el.style.display = 'none';
+            });
             
             const response = await fetch('/api/get_schedules?type=' + type);
             const data = await response.json();
             
             let html = '';
-            data.schedules.forEach(s => {
-                html += '<div class="schedule-item" onclick="selectSchedule(\'' + type + '\', ' + s.id + ')">' +
+            data.schedules.forEach(function(s) {
+                html += '<div class="schedule-item" data-schedule="' + s.id + '">' +
                     '<div class="schedule-detail"><strong>' + s.title + '</strong></div>' +
                     '<div class="schedule-detail">' + s.detail + '</div>' +
                     '<div class="schedule-detail">時長：' + s.duration + ' | 費用：NT$ ' + s.cost + '</div>' +
@@ -256,6 +263,13 @@ HTML_TEMPLATE = """
             
             scheduleDiv.innerHTML = html;
             scheduleDiv.style.display = 'block';
+            
+            scheduleDiv.querySelectorAll('.schedule-item').forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectSchedule(type, parseInt(this.getAttribute('data-schedule')));
+                });
+            });
         }
         
         async function selectSchedule(type, scheduleId) {
@@ -266,12 +280,10 @@ HTML_TEMPLATE = """
             });
             
             const data = await response.json();
-            
             const gptSection = document.getElementById('gptSection');
-            const suggestionText = data.suggestion.split('\\n').join('<br>');
             
             gptSection.innerHTML = '<h3>🤖 AI 旅遊建議</h3>' +
-                '<p>' + suggestionText + '</p>' +
+                '<p>' + data.suggestion.replace(/\n/g, '<br>') + '</p>' +
                 '<a href="' + data.booking_link + '" target="_blank" class="book-link">前往訂票</a>';
             
             gptSection.style.display = 'block';

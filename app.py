@@ -432,16 +432,49 @@ def generate_gpt_suggestion(schedule_id):
         if not api_key:
             return "請設定 OPENAI_API_KEY"
         
+        # 詳細的班次資訊，包含轉乘時間
         schedules_info = {
-            1: "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
-            2: "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
-            3: "台鐵自強號07:24直達，12:44抵達花蓮",
-            4: "台鐵自強3000號07:49直達，12:11抵達花蓮",
-            5: "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
-            6: "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮"
+            1: {
+                "route": "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
+                "transfer_time": 36,  # 分鐘
+                "has_transfer": True,
+                "arrival_time": "11:05"
+            },
+            2: {
+                "route": "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
+                "transfer_time": 18,
+                "has_transfer": True,
+                "arrival_time": "11:51"
+            },
+            3: {
+                "route": "台鐵自強號07:24直達，12:44抵達花蓮",
+                "transfer_time": 0,
+                "has_transfer": False,
+                "arrival_time": "12:44"
+            },
+            4: {
+                "route": "台鐵自強3000號07:49直達，12:11抵達花蓮",
+                "transfer_time": 0,
+                "has_transfer": False,
+                "arrival_time": "12:11"
+            },
+            5: {
+                "route": "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
+                "transfer_time": 57,
+                "has_transfer": True,
+                "arrival_time": "11:46"
+            },
+            6: {
+                "route": "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮",
+                "transfer_time": 66,
+                "has_transfer": True,
+                "arrival_time": "12:11"
+            }
         }
         
-        info = schedules_info.get(schedule_id, "")
+        info = schedules_info.get(schedule_id)
+        if not info:
+            return "班次資訊載入中..."
         
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
@@ -449,17 +482,35 @@ def generate_gpt_suggestion(schedule_id):
             "Authorization": f"Bearer {api_key}"
         }
         
-        prompt = f"""用戶選擇了以下班次：{info}
+        # 根據是否需要轉乘，調整提示詞
+        if info["has_transfer"]:
+            prompt = f"""用戶選擇了以下班次從台中前往花蓮：{info['route']}
+出發日期：2026年1月13日（冬季）
+轉乘時間：{info['transfer_time']}分鐘
 
-請用繁體中文提供簡潔建議（100字內）：
-1. 根據出發時間的穿搭建議
-2. 如果有轉乘，提醒轉乘注意事項
-3. 抵達花蓮後的景點美食推薦"""
+請用繁體中文提供簡潔實用的建議（120字內），分三點：
+1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，提醒攜帶防風外套和保暖衣物
+2. 轉乘注意事項：根據{info['transfer_time']}分鐘的轉乘時間，建議提早多久到達月台比較保險（考慮台北車站動線）
+3. 早班車提醒：早上7點多出發，提醒是否來得及吃早餐、高鐵/台鐵上的餐飲服務
+
+請直接給建議，不要有標題或編號。語氣親切實用。"""
+        else:
+            prompt = f"""用戶選擇了以下班次從台中前往花蓮：{info['route']}
+出發日期：2026年1月13日（冬季）
+直達車，無需轉乘
+
+請用繁體中文提供簡潔實用的建議（100字內），分三點：
+1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，提醒攜帶防風外套和保暖衣物
+2. 直達優勢：無需轉乘，可在車上休息或欣賞沿途風景，建議靠窗座位
+3. 早班車提醒：早上7點多出發，提醒是否來得及吃早餐、台鐵上的餐飲服務
+
+請直接給建議，不要有標題或編號。語氣親切實用。"""
         
         request_data = {
             "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 200
+            "max_tokens": 250,
+            "temperature": 0.7
         }
         
         response = requests.post(url, headers=headers, json=request_data, timeout=30)
@@ -467,10 +518,11 @@ def generate_gpt_suggestion(schedule_id):
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
         else:
-            return "GPT建議暫時無法使用"
+            return "建議載入失敗，請稍後再試"
             
     except Exception as e:
-        return "AI建議載入中..."
+        return "建議載入中..."
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

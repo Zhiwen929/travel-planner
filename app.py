@@ -123,22 +123,60 @@ HTML_TEMPLATE = """
         <p class="subtitle">結合傳統AI路徑規劃與生成式AI旅遊建議</p>
         
         <div class="input-group">
-            <label>出發地點</label>
-            <select id="origin">
-                <option value="台北">台北</option>
-                <option value="台中" selected>台中</option>
-                <option value="高雄">高雄</option>
-            </select>
-        </div>
-        
-        <div class="input-group">
-            <label>目的地</label>
-            <select id="destination">
-                <option value="台北">台北</option>
-                <option value="花蓮" selected>花蓮</option>
-                <option value="台東">台東</option>
-            </select>
-        </div>
+    <label>出發地點</label>
+    <select id="origin">
+        <option value="基隆市">基隆市</option>
+        <option value="台北市">台北市</option>
+        <option value="新北市">新北市</option>
+        <option value="桃園市">桃園市</option>
+        <option value="新竹市">新竹市</option>
+        <option value="新竹縣">新竹縣</option>
+        <option value="苗栗縣">苗栗縣</option>
+        <option value="台中市" selected>台中市</option>
+        <option value="彰化縣">彰化縣</option>
+        <option value="南投縣">南投縣</option>
+        <option value="雲林縣">雲林縣</option>
+        <option value="嘉義市">嘉義市</option>
+        <option value="嘉義縣">嘉義縣</option>
+        <option value="台南市">台南市</option>
+        <option value="高雄市">高雄市</option>
+        <option value="屏東縣">屏東縣</option>
+        <option value="宜蘭縣">宜蘭縣</option>
+        <option value="花蓮縣">花蓮縣</option>
+        <option value="台東縣">台東縣</option>
+        <option value="澎湖縣">澎湖縣</option>
+        <option value="金門縣">金門縣</option>
+        <option value="連江縣">連江縣</option>
+    </select>
+</div>
+
+<div class="input-group">
+    <label>目的地</label>
+    <select id="destination">
+        <option value="基隆市">基隆市</option>
+        <option value="台北市">台北市</option>
+        <option value="新北市">新北市</option>
+        <option value="桃園市">桃園市</option>
+        <option value="新竹市">新竹市</option>
+        <option value="新竹縣">新竹縣</option>
+        <option value="苗栗縣">苗栗縣</option>
+        <option value="台中市">台中市</option>
+        <option value="彰化縣">彰化縣</option>
+        <option value="南投縣">南投縣</option>
+        <option value="雲林縣">雲林縣</option>
+        <option value="嘉義市">嘉義市</option>
+        <option value="嘉義縣">嘉義縣</option>
+        <option value="台南市">台南市</option>
+        <option value="高雄市">高雄市</option>
+        <option value="屏東縣">屏東縣</option>
+        <option value="宜蘭縣">宜蘭縣</option>
+        <option value="花蓮縣" selected>花蓮縣</option>
+        <option value="台東縣">台東縣</option>
+        <option value="澎湖縣">澎湖縣</option>
+        <option value="金門縣">金門縣</option>
+        <option value="連江縣">連江縣</option>
+    </select>
+</div>
         
         <div class="input-group">
             <label>出發時間</label>
@@ -185,22 +223,25 @@ HTML_TEMPLATE = """
                         '<div class="route-detail"><strong>類型：</strong>' + routes.fastest.type + '</div>' +
                         '<div class="route-detail"><strong>時長：</strong>' + routes.fastest.total_duration + ' 分鐘</div>' +
                         '<div class="route-detail"><strong>費用：</strong>NT$ ' + routes.fastest.total_cost + '</div>' +
+                        '<div class="route-detail" style="color: #666; font-size: 14px; margin-top: 8px;">' + routes.fastest.note + '</div>' +
                         '</div>' +
-                        
+    
                         '<div class="route-card">' +
                         '<h3>費用最低方案</h3>' +
                         '<div class="route-detail"><strong>類型：</strong>' + routes.cheapest.type + '</div>' +
                         '<div class="route-detail"><strong>時長：</strong>' + routes.cheapest.total_duration + ' 分鐘</div>' +
                         '<div class="route-detail"><strong>費用：</strong>NT$ ' + routes.cheapest.total_cost + '</div>' +
+                        '<div class="route-detail" style="color: #666; font-size: 14px; margin-top: 8px;">' + routes.cheapest.note + '</div>' +
                         '</div>' +
-                        
+    
                         '<div class="route-card">' +
                         '<h3>綜合推薦方案</h3>' +
                         '<div class="route-detail"><strong>類型：</strong>' + routes.recommended.type + '</div>' +
                         '<div class="route-detail"><strong>時長：</strong>' + routes.recommended.total_duration + ' 分鐘</div>' +
                         '<div class="route-detail"><strong>費用：</strong>NT$ ' + routes.recommended.total_cost + '</div>' +
+                        '<div class="route-detail" style="color: #666; font-size: 14px; margin-top: 8px;">' + routes.recommended.note + '</div>' +
                         '</div>' +
-                        
+    
                         '<div class="gpt-card">' +
                         '<h3>AI 旅遊建議</h3>' +
                         '<p>' + gptText + '</p>' +
@@ -358,4 +399,5 @@ def test():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 

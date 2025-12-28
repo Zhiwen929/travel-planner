@@ -600,113 +600,110 @@ def get_suggestion():
         "cost": schedule_info[schedule_id]["cost"]
     })
 
+# 修改後的 generate_gpt_suggestion 函數
+
 def generate_gpt_suggestion(schedule_id):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
         if not api_key:
             return "請設定 OPENAI_API_KEY"
         
+        # 班次資訊包含轉乘時間細節
         schedules_info = {
             1: {
-                "route": "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
-                "transfer_time": 36,
-                "has_transfer": True,
+                "detail": "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
+                "transfer_time": 36,  # 分鐘
                 "transfer_type": "medium"
             },
             2: {
-                "route": "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
-                "transfer_time": 18,
-                "has_transfer": True,
+                "detail": "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
+                "transfer_time": 18,  # 分鐘
                 "transfer_type": "tight"
             },
             3: {
-                "route": "台鐵自強號07:24直達，12:44抵達花蓮",
+                "detail": "台鐵自強號07:24直達，12:44抵達花蓮",
                 "transfer_time": 0,
-                "has_transfer": False,
-                "transfer_type": "none"
+                "transfer_type": "direct"
             },
             4: {
-                "route": "台鐵自強3000號07:49直達，12:11抵達花蓮",
+                "detail": "台鐵自強3000號07:49直達，12:11抵達花蓮",
                 "transfer_time": 0,
-                "has_transfer": False,
-                "transfer_type": "none"
+                "transfer_type": "direct"
             },
             5: {
-                "route": "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
-                "transfer_time": 57,
-                "has_transfer": True,
+                "detail": "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
+                "transfer_time": 57,  # 分鐘
                 "transfer_type": "long"
             },
             6: {
-                "route": "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮",
-                "transfer_time": 66,
-                "has_transfer": True,
+                "detail": "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮",
+                "transfer_time": 66,  # 分鐘
                 "transfer_type": "long"
             }
         }
         
-        info = schedules_info.get(schedule_id)
-        if not info:
-            return "班次資訊載入中..."
+        info = schedules_info.get(schedule_id, {})
+        detail = info.get("detail", "")
+        transfer_time = info.get("transfer_time", 0)
+        transfer_type = info.get("transfer_type", "")
         
+        # 根據轉乘時間類型生成不同的 prompt
         url = "https://api.openai.com/v1/chat/completions"
         headers = {
             "Content-Type": "application/json",
             "Authorization": f"Bearer {api_key}"
         }
         
-        if info["has_transfer"]:
-            if info["transfer_type"] == "long":
-                transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間相當充裕！建議：
-- 抵達台北車站後，可以先前往一樓的台北車站美食街或地下街，有許多台北知名小吃如阜杭豆漿、東門餃子館等
-- 預留30-40分鐘享用早餐或逛逛微風台北車站
-- 在發車前15-20分鐘前往台鐵月台即可
-- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘，請注意指標"""
-            elif info["transfer_type"] == "medium":
-                transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間適中。建議：
-- 抵達台北車站後，可以快速到一樓便利商店或美食街買份早餐
-- 建議預留10-15分鐘購買早餐
-- 在發車前15分鐘前往台鐵月台
-- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘"""
-            else:
-                transfer_advice = f"""你只有{info['transfer_time']}分鐘的轉乘時間，時間較為緊湊！建議：
-- 下高鐵後請直接前往台鐵月台，不要停留
-- 台北車站從高鐵層到台鐵月台約需步行5-10分鐘
-- 建議提早在高鐵上或出發前用餐
-- 跟隨「台鐵」指標快速移動，發車前5分鐘務必抵達月台"""
-            
-            prompt = f"""用戶選擇了從台中到花蓮的班次：{info['route']}
-出發日期：2026年1月13日（冬季）
+        # 基本資訊
+        base_info = f"""行程：從台中到花蓮
+班次：{detail}
+日期：2026年1月13日（週二）
+出發時間：早上7點多
 
-請用繁體中文提供簡潔實用的建議（180字內），包含以下內容：
+天氣狀況：1月的花蓮正值東北季風盛行期，天氣偏涼，建議穿著保暖衣物。"""
+        
+        # 根據轉乘類型調整建議重點
+        if transfer_type == "direct":
+            prompt = f"""{base_info}
 
-1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，建議攜帶防風外套和保暖衣物。
+這是直達班次，無需轉乘。請用繁體中文提供簡潔建議（100字內）：
+1. 早上出發的穿著建議（1月花蓮天氣涼）
+2. 車程較長，提醒攜帶水或點心
+3. 簡單的花蓮景點提醒"""
+        
+        elif transfer_type == "tight":
+            # 18分鐘轉乘
+            prompt = f"""{base_info}
+轉乘時間：約{transfer_time}分鐘
 
-2. 轉乘時間運用：{transfer_advice}
+這是緊湊的轉乘時間。請用繁體中文提供簡潔建議（100字內）：
+1. 1月花蓮東北季風強，天氣涼，建議穿著保暖
+2. 轉乘時間緊迫（{transfer_time}分鐘），建議在高鐵上或高鐵出發前吃點東西，抵達台北車站後直接前往台鐵月台
+3. 早上出發，可以稍微休息一下"""
+        
+        elif transfer_type == "medium":
+            # 30-40分鐘轉乘
+            prompt = f"""{base_info}
+轉乘時間：約{transfer_time}分鐘
 
-3. 早班車提醒：早上出發記得吃早餐，高鐵和台鐵都有提供便當和飲料販售。
+轉乘時間適中。請用繁體中文提供簡潔建議（100字內）：
+1. 1月花蓮東北季風強，天氣涼，建議穿著保暖
+2. 轉乘時間約{transfer_time}分鐘，可以在台北車站地下街快速買點東西吃或逛逛商店，台鐵月台在地下層很方便
+3. 提醒：不要花太多時間，預留10-15分鐘前往月台"""
+        
+        else:  # long (57-66分鐘)
+            prompt = f"""{base_info}
+轉乘時間：約{transfer_time}分鐘
 
-請用親切、實用的語氣，直接給建議，不要加標題或編號。"""
-        else:
-            prompt = f"""用戶選擇了從台中到花蓮的班次：{info['route']}
-出發日期：2026年1月13日（冬季）
-直達車，無需轉乘
-
-請用繁體中文提供簡潔實用的建議（120字內），包含：
-
-1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，建議攜帶防風外套和保暖衣物。
-
-2. 直達優勢：無需轉乘，可以在車上安心休息或欣賞沿途風景，建議選擇靠窗座位。
-
-3. 早班車提醒：早上出發記得吃早餐，台鐵車上有提供便當和飲料販售。
-
-請用親切、實用的語氣，直接給建議，不要加標題或編號。"""
+轉乘時間充裕。請用繁體中文提供簡潔建議（100字內）：
+1. 1月花蓮東北季風強，天氣涼，建議穿著保暖
+2. 轉乘時間充裕（約{transfer_time}分鐘），可以在台北車站地下街悠閒地吃個早餐或逛逛商店。高鐵和台鐵月台都在地下層，在地下街活動最方便，不用跑到地面樓層
+3. 建議提前30-40分鐘前往台鐵月台，避免錯過班次"""
         
         request_data = {
             "model": "gpt-4o-mini",
             "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": 350,
-            "temperature": 0.7
+            "max_tokens": 300
         }
         
         response = requests.post(url, headers=headers, json=request_data, timeout=30)
@@ -714,10 +711,10 @@ def generate_gpt_suggestion(schedule_id):
         if response.status_code == 200:
             return response.json()['choices'][0]['message']['content']
         else:
-            return "建議載入失敗，請稍後再試"
+            return "GPT建議暫時無法使用"
             
     except Exception as e:
-        return "建議載入中..."
+        return f"AI建議載入中..."
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)

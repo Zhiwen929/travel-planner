@@ -322,24 +322,32 @@ HTML_TEMPLATE = """
         async function selectSchedule(type, scheduleId) {
             const card = document.querySelector('[data-type="' + type + '"]');
             const gptSection = card.querySelector('.gpt-section');
-            
+    
             document.querySelectorAll('.gpt-section').forEach(function(el) {
                 el.style.display = 'none';
             });
-            
+    
             const response = await fetch('/api/get_suggestion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: type, schedule_id: scheduleId })
             });
-            
+    
             const data = await response.json();
             const suggestionText = data.suggestion.split('\\n').join('<br>');
-            
+    
+            let bookingHTML = '';
+            if (data.booking_links.hsr && data.booking_links.tra) {
+                bookingHTML = '<a href="' + data.booking_links.hsr + '" target="_blank" class="book-link">訂購高鐵</a> ' +
+                              '<a href="' + data.booking_links.tra + '" target="_blank" class="book-link">訂購台鐵</a>';
+            } else {
+                bookingHTML = '<a href="' + data.booking_links.tra + '" target="_blank" class="book-link">前往訂票</a>';
+            }
+    
             gptSection.innerHTML = '<h3>🤖 助手建議</h3>' +
                 '<p>' + suggestionText + '</p>' +
-                '<a href="' + data.booking_link + '" target="_blank" class="book-link">前往訂票</a>';
-            
+                bookingHTML;
+    
             gptSection.style.display = 'block';
         }
     </script>
@@ -410,20 +418,27 @@ def get_schedules():
     return jsonify({"schedules": schedules})
 
 @app.route('/api/get_suggestion', methods=['POST'])
+@app.route('/api/get_suggestion', methods=['POST'])
 def get_suggestion():
     data = request.get_json()
     schedule_id = data.get('schedule_id')
     
     suggestion = generate_gpt_suggestion(schedule_id)
     
-    if schedule_id in [1, 2, 5, 6]:
-        booking_link = "https://www.thsrc.com.tw/"
-    else:
-        booking_link = "https://www.railway.gov.tw/"
+    # 判斷是否需要兩個訂票連結
+    if schedule_id in [1, 2, 5, 6]:  # 需要轉乘的方案
+        booking_links = {
+            "hsr": "https://www.thsrc.com.tw/",
+            "tra": "https://www.railway.gov.tw/"
+        }
+    else:  # 台鐵直達
+        booking_links = {
+            "tra": "https://www.railway.gov.tw/"
+        }
     
     return jsonify({
         "suggestion": suggestion,
-        "booking_link": booking_link
+        "booking_links": booking_links
     })
 
 def generate_gpt_suggestion(schedule_id):
@@ -525,4 +540,5 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+
 

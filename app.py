@@ -602,6 +602,8 @@ def get_suggestion():
 
 # 修改後的 generate_gpt_suggestion 函數
 
+# 修改後的 generate_gpt_suggestion 函數
+
 def generate_gpt_suggestion(schedule_id):
     try:
         api_key = os.environ.get('OPENAI_API_KEY')
@@ -698,7 +700,7 @@ def generate_gpt_suggestion(schedule_id):
 轉乘時間充裕。請用繁體中文提供簡潔建議（100字內）：
 1. 1月花蓮東北季風強，天氣涼，建議穿著保暖
 2. 轉乘時間充裕（約{transfer_time}分鐘），可以在台北車站地下街悠閒地吃個早餐或逛逛商店。高鐵和台鐵月台都在地下層，在地下街活動最方便，不用跑到地面樓層
-3. 建議提前30-40分鐘前往台鐵月台，避免錯過班次"""
+3. 建議提前10-20分鐘前往台鐵月台即可"""
         
         request_data = {
             "model": "gpt-4o-mini",
@@ -718,3 +720,4 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

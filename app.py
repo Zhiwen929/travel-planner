@@ -254,34 +254,40 @@ def plan_route():
 def calculate_routes(origin, destination, departure_time):
     routes = []
     
+    # 方案1: 高鐵+台鐵（有優惠票種）
     routes.append({
         "id": 1,
         "type": "高鐵+台鐵",
+        "note": "高鐵可購買早鳥票或大學生票更優惠",
         "segments": [
-            {"mode": "高鐵", "from": origin, "to": "台北", "duration": 50, "cost": 700},
-            {"mode": "台鐵", "from": "台北", "to": destination, "duration": 120, "cost": 440}
+            {"mode": "高鐵", "from": origin, "to": "台北", "duration": 50, "cost": 700, "ticket_type": "標準票"},
+            {"mode": "台鐵", "from": "台北", "to": destination, "duration": 180, "cost": 583, "ticket_type": "全票"}
         ],
-        "total_duration": 170,
-        "total_cost": 1140,
+        "total_duration": 230,
+        "total_cost": 1283,
         "transfers": 1
     })
     
+    # 方案2: 台鐵直達（無優惠票）
     routes.append({
         "id": 2,
         "type": "台鐵直達",
+        "note": "台鐵無優惠票價，一律以全票計算",
         "segments": [
-            {"mode": "台鐵", "from": origin, "to": destination, "duration": 240, "cost": 563}
+            {"mode": "台鐵", "from": origin, "to": destination, "duration": 300, "cost": 966, "ticket_type": "全票"}
         ],
-        "total_duration": 240,
-        "total_cost": 563,
+        "total_duration": 300,
+        "total_cost": 966,
         "transfers": 0
     })
     
+    # 方案3: 飛機
     routes.append({
         "id": 3,
         "type": "飛機",
+        "note": "最快速但價格較高",
         "segments": [
-            {"mode": "飛機", "from": origin, "to": destination, "duration": 60, "cost": 2800}
+            {"mode": "飛機", "from": origin, "to": destination, "duration": 60, "cost": 2800, "ticket_type": "經濟艙"}
         ],
         "total_duration": 60,
         "total_cost": 2800,
@@ -352,3 +358,4 @@ def test():
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

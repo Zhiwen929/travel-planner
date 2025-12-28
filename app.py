@@ -278,14 +278,16 @@ HTML_TEMPLATE = """
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: type, schedule_id: scheduleId })
             });
-            
+    
             const data = await response.json();
             const gptSection = document.getElementById('gptSection');
-            
+    
+            const suggestionText = data.suggestion.split('\\n').join('<br>');
+    
             gptSection.innerHTML = '<h3>🤖 AI 旅遊建議</h3>' +
-                '<p>' + data.suggestion.replace(/\n/g, '<br>') + '</p>' +
+                '<p>' + suggestionText + '</p>' +
                 '<a href="' + data.booking_link + '" target="_blank" class="book-link">前往訂票</a>';
-            
+    
             gptSection.style.display = 'block';
             gptSection.scrollIntoView({ behavior: 'smooth' });
         }
@@ -421,3 +423,4 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
+

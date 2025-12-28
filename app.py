@@ -39,6 +39,55 @@ HTML_TEMPLATE = """
             color: #666;
             margin-bottom: 30px;
         }
+        .booked-trips {
+            background: #e8f5e9;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 30px;
+            border-left: 5px solid #4caf50;
+            display: none;
+        }
+        .booked-trips h2 {
+            color: #2e7d32;
+            margin-bottom: 15px;
+            font-size: 1.3em;
+        }
+        .trip-item {
+            background: white;
+            padding: 15px;
+            margin: 10px 0;
+            border-radius: 8px;
+            border: 2px solid #a5d6a7;
+            position: relative;
+        }
+        .trip-item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+        .trip-route {
+            font-weight: bold;
+            color: #2e7d32;
+            font-size: 1.1em;
+        }
+        .trip-detail {
+            font-size: 14px;
+            color: #666;
+            margin: 5px 0;
+        }
+        .delete-trip {
+            background: #f44336;
+            color: white;
+            border: none;
+            padding: 5px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        .delete-trip:hover {
+            background: #d32f2f;
+        }
         .input-group {
             margin-bottom: 20px;
         }
@@ -135,14 +184,24 @@ HTML_TEMPLATE = """
             color: #ff6b6b;
             margin-bottom: 10px;
         }
-        .book-link {
+        .book-link, .confirm-trip {
             display: inline-block;
             margin-top: 10px;
+            margin-right: 10px;
             padding: 10px 20px;
             background: #667eea;
             color: white;
             text-decoration: none;
             border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        .confirm-trip {
+            background: #4caf50;
+        }
+        .confirm-trip:hover {
+            background: #45a049;
         }
     </style>
 </head>
@@ -151,23 +210,28 @@ HTML_TEMPLATE = """
         <h1>智慧交通規劃助手</h1>
         <p class="subtitle">結合傳統AI路徑規劃與生成式AI旅遊建議</p>
         
+        <div class="booked-trips" id="bookedTrips">
+            <h2>📋 已訂行程</h2>
+            <div id="tripsList"></div>
+        </div>
+        
         <div class="input-group">
             <label>出發地點</label>
             <select id="origin">
                 <option value="基隆市">基隆市</option>
-                <option value="台北市">台北市</option>
+                <option value="台北市" selected>台北市</option>
                 <option value="新北市">新北市</option>
                 <option value="桃園市">桃園市</option>
                 <option value="新竹市">新竹市</option>
                 <option value="新竹縣">新竹縣</option>
                 <option value="苗栗縣">苗栗縣</option>
-                <option value="台中市" selected>台中市</option>
+                <option value="台中市">台中市</option>
                 <option value="彰化縣">彰化縣</option>
                 <option value="南投縣">南投縣</option>
                 <option value="雲林縣">雲林縣</option>
                 <option value="嘉義市">嘉義市</option>
                 <option value="嘉義縣">嘉義縣</option>
-                <option value="台南市">台南市</option>
+                <option value="台南市" selected>台南市</option>
                 <option value="高雄市">高雄市</option>
                 <option value="屏東縣">屏東縣</option>
                 <option value="宜蘭縣">宜蘭縣</option>
@@ -224,7 +288,18 @@ HTML_TEMPLATE = """
         now.setHours(7, 0, 0, 0);
         document.getElementById('departure_time').value = now.toISOString().slice(0, 16);
         
+        let bookedTrips = [];
+        let currentSelection = null;
+        
         document.getElementById('planBtn').addEventListener('click', function() {
+            const origin = document.getElementById('origin').value;
+            const destination = document.getElementById('destination').value;
+            
+            if (origin === destination) {
+                alert('出發地點和目的地不能相同！');
+                return;
+            }
+            
             const loading = document.getElementById('loading');
             const result = document.getElementById('result');
             
@@ -322,20 +397,28 @@ HTML_TEMPLATE = """
         async function selectSchedule(type, scheduleId) {
             const card = document.querySelector('[data-type="' + type + '"]');
             const gptSection = card.querySelector('.gpt-section');
-    
+            
             document.querySelectorAll('.gpt-section').forEach(function(el) {
                 el.style.display = 'none';
             });
-    
+            
             const response = await fetch('/api/get_suggestion', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ type: type, schedule_id: scheduleId })
             });
-    
+            
             const data = await response.json();
             const suggestionText = data.suggestion.split('\\n').join('<br>');
-    
+            
+            currentSelection = {
+                type: type,
+                scheduleId: scheduleId,
+                scheduleTitle: data.schedule_title,
+                cost: data.cost,
+                bookingLinks: data.booking_links
+            };
+            
             let bookingHTML = '';
             if (data.booking_links.hsr && data.booking_links.tra) {
                 bookingHTML = '<a href="' + data.booking_links.hsr + '" target="_blank" class="book-link">訂購高鐵</a> ' +
@@ -343,12 +426,78 @@ HTML_TEMPLATE = """
             } else {
                 bookingHTML = '<a href="' + data.booking_links.tra + '" target="_blank" class="book-link">前往訂票</a>';
             }
-    
+            
             gptSection.innerHTML = '<h3>🤖 助手建議</h3>' +
                 '<p>' + suggestionText + '</p>' +
-                bookingHTML;
-    
+                bookingHTML +
+                '<button class="confirm-trip" onclick="confirmTrip()">✓ 確認行程</button>';
+            
             gptSection.style.display = 'block';
+        }
+        
+        function confirmTrip() {
+            if (!currentSelection) return;
+            
+            const origin = document.getElementById('origin').value;
+            const destination = document.getElementById('destination').value;
+            const departureTime = document.getElementById('departure_time').value;
+            
+            const trip = {
+                id: Date.now(),
+                origin: origin,
+                destination: destination,
+                departureTime: departureTime,
+                schedule: currentSelection.scheduleTitle,
+                cost: currentSelection.cost,
+                bookingLinks: currentSelection.bookingLinks
+            };
+            
+            bookedTrips.push(trip);
+            updateBookedTrips();
+            
+            alert('✓ 行程已加入！');
+        }
+        
+        function updateBookedTrips() {
+            const bookedTripsDiv = document.getElementById('bookedTrips');
+            const tripsList = document.getElementById('tripsList');
+            
+            if (bookedTrips.length === 0) {
+                bookedTripsDiv.style.display = 'none';
+                return;
+            }
+            
+            bookedTripsDiv.style.display = 'block';
+            
+            let html = '';
+            bookedTrips.forEach(function(trip) {
+                const date = new Date(trip.departureTime);
+                const formattedDate = date.getFullYear() + '/' + 
+                                      (date.getMonth() + 1) + '/' + 
+                                      date.getDate() + ' ' +
+                                      String(date.getHours()).padStart(2, '0') + ':' +
+                                      String(date.getMinutes()).padStart(2, '0');
+                
+                html += '<div class="trip-item">' +
+                    '<div class="trip-item-header">' +
+                    '<div class="trip-route">' + trip.origin + ' → ' + trip.destination + '</div>' +
+                    '<button class="delete-trip" onclick="deleteTrip(' + trip.id + ')">刪除</button>' +
+                    '</div>' +
+                    '<div class="trip-detail">📅 ' + formattedDate + '</div>' +
+                    '<div class="trip-detail">🚄 ' + trip.schedule + '</div>' +
+                    '<div class="trip-detail">💰 NT$ ' + trip.cost + '</div>' +
+                    '</div>';
+            });
+            
+            tripsList.innerHTML = html;
+            bookedTripsDiv.scrollIntoView({ behavior: 'smooth' });
+        }
+        
+        function deleteTrip(tripId) {
+            bookedTrips = bookedTrips.filter(function(trip) {
+                return trip.id !== tripId;
+            });
+            updateBookedTrips();
         }
     </script>
 </body>
@@ -418,27 +567,37 @@ def get_schedules():
     return jsonify({"schedules": schedules})
 
 @app.route('/api/get_suggestion', methods=['POST'])
-@app.route('/api/get_suggestion', methods=['POST'])
 def get_suggestion():
     data = request.get_json()
     schedule_id = data.get('schedule_id')
     
+    # 獲取班次詳細資訊
+    schedule_info = {
+        1: {"title": "高鐵1202 (07:21→08:04) + 台鐵3000-472 (08:40→11:05)", "cost": "1,283"},
+        2: {"title": "高鐵0204 (07:48→08:34) + 台鐵212 (08:52→11:51)", "cost": "1,283"},
+        3: {"title": "台鐵自強170 (07:24→12:44)", "cost": "966"},
+        4: {"title": "台鐵自強3000-280 (07:49→12:11)", "cost": "966"},
+        5: {"title": "高鐵0802 (07:25→08:29) + 台鐵3000-418 (09:26→11:46)", "cost": "1,283"},
+        6: {"title": "高鐵1602 (07:40→08:39) + 台鐵3000-280 (09:45→12:11)", "cost": "1,283"}
+    }
+    
     suggestion = generate_gpt_suggestion(schedule_id)
     
-    # 判斷是否需要兩個訂票連結
-    if schedule_id in [1, 2, 5, 6]:  # 需要轉乘的方案
+    if schedule_id in [1, 2, 5, 6]:
         booking_links = {
             "hsr": "https://www.thsrc.com.tw/",
             "tra": "https://www.railway.gov.tw/"
         }
-    else:  # 台鐵直達
+    else:
         booking_links = {
             "tra": "https://www.railway.gov.tw/"
         }
     
     return jsonify({
         "suggestion": suggestion,
-        "booking_links": booking_links
+        "booking_links": booking_links,
+        "schedule_title": schedule_info[schedule_id]["title"],
+        "cost": schedule_info[schedule_id]["cost"]
     })
 
 def generate_gpt_suggestion(schedule_id):
@@ -452,13 +611,13 @@ def generate_gpt_suggestion(schedule_id):
                 "route": "高鐵07:21出發，08:04抵達台北，轉乘08:40台鐵，11:05抵達花蓮",
                 "transfer_time": 36,
                 "has_transfer": True,
-                "transfer_type": "medium"  # 中等時間
+                "transfer_type": "medium"
             },
             2: {
                 "route": "高鐵07:48出發，08:34抵達台北，轉乘08:52台鐵，11:51抵達花蓮",
                 "transfer_time": 18,
                 "has_transfer": True,
-                "transfer_type": "tight"  # 緊湊
+                "transfer_type": "tight"
             },
             3: {
                 "route": "台鐵自強號07:24直達，12:44抵達花蓮",
@@ -476,13 +635,13 @@ def generate_gpt_suggestion(schedule_id):
                 "route": "高鐵07:25出發，08:29抵達台北，轉乘09:26台鐵，11:46抵達花蓮",
                 "transfer_time": 57,
                 "has_transfer": True,
-                "transfer_type": "long"  # 充裕
+                "transfer_type": "long"
             },
             6: {
                 "route": "高鐵07:40出發，08:39抵達台北，轉乘09:45台鐵，12:11抵達花蓮",
                 "transfer_time": 66,
                 "has_transfer": True,
-                "transfer_type": "long"  # 充裕
+                "transfer_type": "long"
             }
         }
         
@@ -497,20 +656,19 @@ def generate_gpt_suggestion(schedule_id):
         }
         
         if info["has_transfer"]:
-            # 根據轉乘時間長短調整建議
-            if info["transfer_type"] == "long":  # 57-66分鐘
+            if info["transfer_type"] == "long":
                 transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間相當充裕！建議：
 - 抵達台北車站後，可以先前往一樓的台北車站美食街或地下街，有許多台北知名小吃如阜杭豆漿、東門餃子館等
 - 預留30-40分鐘享用早餐或逛逛微風台北車站
 - 在發車前15-20分鐘前往台鐵月台即可
 - 台北車站從高鐵層到台鐵月台約需步行5-10分鐘，請注意指標"""
-            elif info["transfer_type"] == "medium":  # 36分鐘
+            elif info["transfer_type"] == "medium":
                 transfer_advice = f"""你有{info['transfer_time']}分鐘的轉乘時間，時間適中。建議：
 - 抵達台北車站後，可以快速到一樓便利商店或美食街買份早餐
 - 建議預留10-15分鐘購買早餐
 - 在發車前15分鐘前往台鐵月台
 - 台北車站從高鐵層到台鐵月台約需步行5-10分鐘"""
-            else:  # 18分鐘，緊湊
+            else:
                 transfer_advice = f"""你只有{info['transfer_time']}分鐘的轉乘時間，時間較為緊湊！建議：
 - 下高鐵後請直接前往台鐵月台，不要停留
 - 台北車站從高鐵層到台鐵月台約需步行5-10分鐘
@@ -538,7 +696,7 @@ def generate_gpt_suggestion(schedule_id):
 
 1. 天氣提醒：1月花蓮東北季風強勁，風大且偏冷，建議攜帶防風外套和保暖衣物。
 
-2. 直達優勢：無需轉乘，可以在車上安心休息或欣賞沿途風景，建議選擇靠窗座位。車程約{info['transfer_time'] if info['transfer_time'] > 0 else '4-5'}小時。
+2. 直達優勢：無需轉乘，可以在車上安心休息或欣賞沿途風景，建議選擇靠窗座位。
 
 3. 早班車提醒：早上出發記得吃早餐，台鐵車上有提供便當和飲料販售。
 
@@ -563,6 +721,3 @@ def generate_gpt_suggestion(schedule_id):
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
-
-
-
